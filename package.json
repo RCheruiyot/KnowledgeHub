@@ -1,0 +1,12 @@
+{
+  "name": "atlas-knowledge-base",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @atlas/api & npm run dev -w @atlas/web",
+    "build": "npm run build -w @atlas/api && npm run build -w @atlas/web",
+    "db:init": "docker compose exec postgres psql -U atlas -d atlas -f /docker-entrypoint-initdb.d/001-init.sql"
+  }
+}
