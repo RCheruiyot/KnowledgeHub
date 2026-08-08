@@ -1,6 +1,18 @@
 import { FormEvent, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import './styles.css';
+import '@radix-ui/themes/styles.css';
+import {
+  Box,
+  Button,
+  Card,
+  Container,
+  Flex,
+  Heading,
+  Link,
+  Text,
+  TextField,
+  Theme,
+} from '@radix-ui/themes';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -136,141 +148,212 @@ function App() {
 
   function renderAuthView() {
     return (
-      <main className="auth">
-        <div className="auth-card">
-          <a className="brand">
-            <b>A</b> atlas
-          </a>
-          <p className="eyebrow">AI KNOWLEDGE BASE</p>
-          <h1>{mode === 'register' ? 'Start your workspace.' : 'Welcome back.'}</h1>
-          <p className="muted">Upload your team’s knowledge and get cited answers.</p>
+      <Box
+        style={{
+          minHeight: '100vh',
+          display: 'grid',
+          placeItems: 'center',
+          padding: '24px',
+          background: 'radial-gradient(circle at 83% 12%, #eeeaff 0, transparent 25%), #fbfaf7',
+        }}
+      >
+        <Card size="3" style={{ width: 'min(420px, 100%)', padding: '32px' }}>
+          <Flex direction="column" gap="3">
+            <Link href="#" style={{ textDecoration: 'none', color: 'inherit', fontSize: '21px', fontWeight: 800 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '8px', background: '#f37c67', color: '#fff', marginRight: '8px' }}>
+                K
+              </span>
+              KnowledgeHub
+            </Link>
 
-          <form onSubmit={authenticate}>
-            <label>
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </label>
+            <Text size="1" weight="bold" style={{ letterSpacing: '0.2em', color: '#817b89' }}>
+              AI KNOWLEDGE BASE
+            </Text>
 
-            <label>
-              Password
-              <input
-                type="password"
-                minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
+            <Heading as="h1" size="7">
+              {mode === 'register' ? 'Start your workspace.' : 'Welcome back.'}
+            </Heading>
 
-            <button disabled={busy}>
-              {busy ? 'Please wait…' : mode === 'register' ? 'Create workspace' : 'Sign in'}
-            </button>
-          </form>
+            <Text color="gray">
+              Upload your team’s knowledge and get cited answers.
+            </Text>
 
-          <p className="switch">
-            {mode === 'register' ? 'Already have an account?' : 'New to Atlas?'}
-            <button onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>
-              {mode === 'register' ? 'Sign in' : 'Create one'}
-            </button>
-          </p>
+            <form onSubmit={authenticate}>
+              <Flex direction="column" gap="3">
+                <label>
+                  <Text as="div" size="2" weight="bold" style={{ marginBottom: '6px' }}>
+                    Email
+                  </Text>
+                  <TextField.Root>
+                    <TextField.Input
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                    />
+                  </TextField.Root>
+                </label>
 
-          {notice && <p className="notice">{notice}</p>}
-        </div>
-      </main>
+                <label>
+                  <Text as="div" size="2" weight="bold" style={{ marginBottom: '6px' }}>
+                    Password
+                  </Text>
+                  <TextField.Root>
+                    <TextField.Input
+                      type="password"
+                      minLength={8}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                    />
+                  </TextField.Root>
+                </label>
+
+                <Button size="3" type="submit" disabled={busy}>
+                  {busy ? 'Please wait…' : mode === 'register' ? 'Create workspace' : 'Sign in'}
+                </Button>
+              </Flex>
+            </form>
+
+            <Text size="2" color="gray">
+              {mode === 'register' ? 'Already have an account?' : 'New to KnowledgeHub?'}{' '}
+              <Button variant="ghost" size="2" type="button" onClick={() => setMode(mode === 'register' ? 'login' : 'register')}>
+                {mode === 'register' ? 'Sign in' : 'Create one'}
+              </Button>
+            </Text>
+
+            {notice && (
+              <Text size="2" color="red">
+                {notice}
+              </Text>
+            )}
+          </Flex>
+        </Card>
+      </Box>
     );
   }
 
   function renderAppView() {
     return (
-      <main className="app">
-        <header>
-          <a className="brand">
-            <b>A</b> atlas
-          </a>
+      <Container size="4" style={{ padding: '24px 24px 72px' }}>
+        <Flex align="center" gap="4" wrap="wrap">
+          <Link href="#" style={{ textDecoration: 'none', color: 'inherit', fontSize: '21px', fontWeight: 800 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', borderRadius: '8px', background: '#f37c67', color: '#fff', marginRight: '8px' }}>
+              K
+            </span>
+            {auth?.organization.name || 'KnowledgeHub'}
+          </Link>
 
-          <div className="workspace">
-            <span className="dot" />
-            {auth?.organization.name}
-          </div>
+          <Flex align="center" gap="2" ml="auto">
+            <Box style={{ width: '8px', height: '8px', borderRadius: '999px', background: '#60b48c' }} />
+            <Text size="2" color="gray">
+              {auth?.organization.name || 'KnowledgeHub'}
+            </Text>
+          </Flex>
 
-          <button className="signout" onClick={handleSignOut}>
+          <Button variant="ghost" size="2" type="button" onClick={handleSignOut}>
             Sign out
-          </button>
-        </header>
+          </Button>
+        </Flex>
 
-        <section className="hero">
-          <p className="eyebrow">YOUR KNOWLEDGE, ANSWERED</p>
-          <h1>Ask your workspace anything.</h1>
-          <p>Atlas finds the relevant parts of your documents and cites every answer.</p>
+        <Box style={{ padding: '80px 0 56px', maxWidth: '740px' }}>
+          <Text size="1" weight="bold" style={{ letterSpacing: '0.2em', color: '#6954b9' }}>
+            YOUR KNOWLEDGE, ANSWERED
+          </Text>
+          <Heading as="h1" size="8" style={{ marginTop: '12px' }}>
+            Ask your workspace anything.
+          </Heading>
+          <Text size="4" color="gray" style={{ marginTop: '12px' }}>
+            KnowledgeHub finds the relevant parts of your documents and cites every answer.
+          </Text>
 
-          <form className="ask" onSubmit={ask}>
-            <input
-              placeholder="e.g. What is our refund policy?"
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-            />
-            <button disabled={busy}>Ask Atlas →</button>
+          <form onSubmit={ask} style={{ marginTop: '24px' }}>
+            <Flex gap="3" wrap="wrap">
+              <TextField.Root style={{ flex: 1, minWidth: '260px' }}>
+                <TextField.Input
+                  placeholder="e.g. What is our refund policy?"
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                />
+              </TextField.Root>
+              <Button size="3" type="submit" disabled={busy}>
+                Ask KnowledgeHub →
+              </Button>
+            </Flex>
           </form>
-        </section>
+        </Box>
 
-        <section className="grid">
-          <article className="panel">
-            <h2>Add knowledge</h2>
-            <p>PDF, DOCX, Markdown, or plain text. Up to 20MB.</p>
+        <Flex gap="4" wrap="wrap">
+          <Card size="3" style={{ flex: '1 1 280px' }}>
+            <Heading as="h2" size="4">
+              Add knowledge
+            </Heading>
+            <Text color="gray" style={{ marginTop: '8px' }}>
+              PDF, DOCX, Markdown, or plain text. Up to 20MB.
+            </Text>
 
-            <form className="upload" onSubmit={upload}>
-              <input
-                type="file"
-                accept=".pdf,.docx,.md,.markdown,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
-                onChange={(event) => setFile(event.target.files?.[0] || null)}
-              />
-              <button disabled={!file || busy}>
-                {busy ? 'Working…' : 'Upload document'}
-              </button>
+            <form onSubmit={upload} style={{ marginTop: '16px' }}>
+              <Flex direction="column" gap="3">
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.md,.markdown,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,text/plain"
+                  onChange={(event) => setFile(event.target.files?.[0] || null)}
+                />
+                <Button type="submit" disabled={!file || busy}>
+                  {busy ? 'Working…' : 'Upload document'}
+                </Button>
+              </Flex>
             </form>
-          </article>
+          </Card>
 
-          <article className="panel answer">
-            <h2>{answer ? 'Answer' : 'Ready when you are'}</h2>
+          <Card size="3" style={{ flex: '1 1 320px' }}>
+            <Heading as="h2" size="4">
+              {answer ? 'Answer' : 'Ready when you are'}
+            </Heading>
 
             {answer ? (
-              <>
-                <p>{answer}</p>
+              <Box style={{ marginTop: '12px' }}>
+                <Text>{answer}</Text>
 
                 {citations.length > 0 && (
-                  <div className="citations">
-                    <strong>Sources</strong>
-                    {citations.map((citation) => (
-                      <div key={citation.number}>
-                        <span>[{citation.number}]</span>
-                        <b>{citation.filename}</b>
-                        <small>{citation.excerpt}…</small>
-                      </div>
-                    ))}
-                  </div>
+                  <Box style={{ marginTop: '16px' }}>
+                    <Text weight="bold">Sources</Text>
+                    <Flex direction="column" gap="2" style={{ marginTop: '8px' }}>
+                      {citations.map((citation) => (
+                        <Box key={citation.number}>
+                          <Text size="2" weight="bold">[{citation.number}]</Text>{' '}
+                          <Text size="2" weight="bold">{citation.filename}</Text>
+                          <Text size="2" color="gray" as="div">
+                            {citation.excerpt}…
+                          </Text>
+                        </Box>
+                      ))}
+                    </Flex>
+                  </Box>
                 )}
-              </>
+              </Box>
             ) : (
-              <p>Your answers will appear here with links back to the exact supporting source.</p>
+              <Text color="gray" style={{ marginTop: '12px' }}>
+                Your answers will appear here with links back to the exact supporting source.
+              </Text>
             )}
-          </article>
-        </section>
+          </Card>
+        </Flex>
 
-        {notice && <div className="toast">{notice}</div>}
-      </main>
+        {notice && (
+          <Box style={{ marginTop: '20px' }}>
+            <Text color="red">{notice}</Text>
+          </Box>
+        )}
+      </Container>
     );
   }
 
-  if (!auth) {
-    return renderAuthView();
-  }
-
-  return renderAppView();
+  return (
+    <Theme appearance="light" accentColor="violet" grayColor="slate">
+      {auth ? renderAppView() : renderAuthView()}
+    </Theme>
+  );
 }
 
 createRoot(document.getElementById('root')!).render(<App />);
