@@ -8,5 +8,15 @@
     "dev": "npm run dev -w @atlas/api & npm run dev -w @atlas/web",
     "build": "npm run build -w @atlas/api && npm run build -w @atlas/web",
     "db:init": "docker compose exec postgres psql -U atlas -d atlas -f /docker-entrypoint-initdb.d/001-init.sql"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "dependencies": {
+    "@babel/runtime": "^8.0.0",
+    "classnames": "^2.5.1",
+    "csstype": "^3.2.3",
+    "prop-types": "^15.8.1"
   }
 }

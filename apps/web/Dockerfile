@@ -4,5 +4,5 @@ COPY package.json ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/web/package.json ./apps/web/package.json
 COPY . /app
-RUN npm install --legacy-peer-deps
-CMD ["sh", "-c", "npm run dev -w @atlas/web -- --host 0.0.0.0"]
+RUN npm install
+CMD ["sh", "-c", "npm run dev -w @knowledgehub/web -- --host 0.0.0.0"]
