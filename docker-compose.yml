@@ -8,6 +8,7 @@ services:
     environment:
       PORT: 3000
       WEB_ORIGIN: http://localhost:5173
+      POSTGRES_URL: postgres://atlas:atlas@postgres:5432/atlas
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: atlas
