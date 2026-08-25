@@ -16,15 +16,19 @@ import {
   Auth,
   Citation,
   Conversation,
+  DocumentDetail,
   DocumentRecord,
   MemberRole,
   Message,
   WorkspaceMember,
   askQuestion,
+  deleteDocument,
+  getDocument,
   listConversations,
   listDocuments,
   listMembers,
   listMessages,
+  reprocessDocument,
   uploadDocument,
 } from './api';
 import { WorkspaceSettings } from './WorkspaceSettings';
@@ -36,6 +40,7 @@ type Props = {
 
 export function Dashboard({ auth, onSignOut }: Props) {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentDetail | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<MemberRole>(
@@ -47,6 +52,7 @@ export function Dashboard({ auth, onSignOut }: Props) {
   const [question, setQuestion] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [documentBusy, setDocumentBusy] = useState(false);
 
   useEffect(() => {
     void refreshWorkspace();
@@ -64,6 +70,13 @@ export function Dashboard({ auth, onSignOut }: Props) {
       setConversations(nextConversations);
       setMembers(nextMembers.members);
       setCurrentUserRole(nextMembers.currentUserRole);
+
+      if (selectedDocument) {
+        const stillExists = nextDocuments.some((document) => document.id === selectedDocument.id);
+        if (!stillExists) {
+          setSelectedDocument(null);
+        }
+      }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Could not load workspace');
     }
@@ -79,6 +92,7 @@ export function Dashboard({ auth, onSignOut }: Props) {
     try {
       const document = await uploadDocument(auth, file);
       setNotice(`${document.filename} is ready to ask about.`);
+      setSelectedDocument(document);
       setFile(null);
       await refreshWorkspace();
     } catch (error) {
@@ -131,6 +145,58 @@ export function Dashboard({ auth, onSignOut }: Props) {
     setActiveConversationId(undefined);
     setMessages([]);
     setQuestion('');
+  }
+
+  async function openDocument(documentId: string) {
+    setDocumentBusy(true);
+    setNotice('');
+
+    try {
+      setSelectedDocument(await getDocument(auth, documentId));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not load document');
+    } finally {
+      setDocumentBusy(false);
+    }
+  }
+
+  async function handleReprocessDocument(documentId: string) {
+    setDocumentBusy(true);
+    setNotice('');
+
+    try {
+      const document = await reprocessDocument(auth, documentId);
+      setSelectedDocument(document);
+      setNotice(`${document.filename} was reprocessed.`);
+      await refreshWorkspace();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not reprocess document');
+    } finally {
+      setDocumentBusy(false);
+    }
+  }
+
+  async function handleDeleteDocument(documentId: string) {
+    const document = documents.find((item) => item.id === documentId);
+    const confirmed = window.confirm(`Delete ${document?.filename || 'this document'}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDocumentBusy(true);
+    setNotice('');
+
+    try {
+      await deleteDocument(auth, documentId);
+      setSelectedDocument(null);
+      setNotice(`${document?.filename || 'Document'} was deleted.`);
+      await refreshWorkspace();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Could not delete document');
+    } finally {
+      setDocumentBusy(false);
+    }
   }
 
   function handleMembersChanged(nextMembers: WorkspaceMember[], nextRole: MemberRole) {
@@ -232,11 +298,19 @@ export function Dashboard({ auth, onSignOut }: Props) {
                 </Text>
               ) : (
                 documents.map((document) => (
-                  <Flex key={document.id} align="center" justify="between" gap="3">
-                    <Text size="2" style={{ minWidth: 0 }}>
+                  <Flex key={document.id} align="center" gap="2">
+                    <Button
+                      type="button"
+                      variant={selectedDocument?.id === document.id ? 'soft' : 'ghost'}
+                      color={selectedDocument?.id === document.id ? 'violet' : 'gray'}
+                      onClick={() => openDocument(document.id)}
+                      style={{ flex: 1, justifyContent: 'flex-start', minWidth: 0 }}
+                    >
                       {document.filename}
-                    </Text>
-                    <Badge color={statusColor(document.status)}>{document.status}</Badge>
+                    </Button>
+                    <Badge color={statusColor(document.status)}>
+                      {document.chunk_count}
+                    </Badge>
                   </Flex>
                 ))
               )}
@@ -275,8 +349,16 @@ export function Dashboard({ auth, onSignOut }: Props) {
 
             <MessageList messages={messages} />
 
+            <DocumentDetails
+              document={selectedDocument}
+              canManageDocuments={canUploadDocuments}
+              busy={documentBusy}
+              onReprocess={handleReprocessDocument}
+              onDelete={handleDeleteDocument}
+            />
+
             {notice && (
-              <Text size="2" color={notice.includes('ready') ? 'green' : 'red'}>
+              <Text size="2" color={noticeColor(notice)}>
                 {notice}
               </Text>
             )}
@@ -284,6 +366,90 @@ export function Dashboard({ auth, onSignOut }: Props) {
         </Card>
       </Grid>
     </Container>
+  );
+}
+
+function DocumentDetails({
+  document,
+  canManageDocuments,
+  busy,
+  onReprocess,
+  onDelete,
+}: {
+  document: DocumentDetail | null;
+  canManageDocuments: boolean;
+  busy: boolean;
+  onReprocess: (documentId: string) => void;
+  onDelete: (documentId: string) => void;
+}) {
+  if (!document) {
+    return null;
+  }
+
+  return (
+    <Card variant="surface">
+      <Flex align="start" justify="between" gap="3" wrap="wrap">
+        <Box>
+          <Text size="1" weight="bold" color="gray">
+            DOCUMENT
+          </Text>
+          <Heading as="h3" size="4" mt="1">
+            {document.filename}
+          </Heading>
+          <Flex gap="2" mt="2" wrap="wrap">
+            <Badge color={statusColor(document.status)}>{document.status}</Badge>
+            <Badge color="gray">{document.chunk_count} chunks</Badge>
+            <Badge color="gray">{document.mime_type}</Badge>
+          </Flex>
+        </Box>
+
+        {canManageDocuments && (
+          <Flex gap="2">
+            <Button
+              size="2"
+              variant="soft"
+              type="button"
+              disabled={busy}
+              onClick={() => onReprocess(document.id)}
+            >
+              Reprocess
+            </Button>
+            <Button
+              size="2"
+              variant="soft"
+              color="red"
+              type="button"
+              disabled={busy}
+              onClick={() => onDelete(document.id)}
+            >
+              Delete
+            </Button>
+          </Flex>
+        )}
+      </Flex>
+
+      <Separator size="4" my="4" />
+
+      {document.chunks.length === 0 ? (
+        <Text size="2" color="gray">
+          No chunks are stored for this document yet.
+        </Text>
+      ) : (
+        <Flex direction="column" gap="3">
+          {document.chunks.map((chunk) => (
+            <Box key={chunk.id}>
+              <Text size="2" weight="bold">
+                Chunk {chunk.chunk_index + 1}
+              </Text>
+              <Text size="2" color="gray" as="p" mt="1">
+                {chunk.preview}
+                {chunk.content.length > chunk.preview.length ? '...' : ''}
+              </Text>
+            </Box>
+          ))}
+        </Flex>
+      )}
+    </Card>
   );
 }
 
@@ -352,4 +518,16 @@ function statusColor(status: DocumentRecord['status']) {
   if (status === 'ready') return 'green';
   if (status === 'failed') return 'red';
   return 'yellow';
+}
+
+function noticeColor(notice: string) {
+  if (
+    notice.includes('ready') ||
+    notice.includes('deleted') ||
+    notice.includes('reprocessed')
+  ) {
+    return 'green';
+  }
+
+  return 'red';
 }

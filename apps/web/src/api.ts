@@ -30,6 +30,19 @@ export type DocumentRecord = {
   mime_type: string;
   status: 'processing' | 'ready' | 'failed';
   created_at: string;
+  chunk_count: number;
+};
+
+export type DocumentChunkPreview = {
+  id: string;
+  chunk_index: number;
+  content: string;
+  preview: string;
+};
+
+export type DocumentDetail = DocumentRecord & {
+  storage_key: string;
+  chunks: DocumentChunkPreview[];
 };
 
 export type Message = {
@@ -97,11 +110,40 @@ export function uploadDocument(auth: Auth, file: File) {
   const body = new FormData();
   body.append('file', file);
 
-  return request<DocumentRecord>(`/organizations/${auth.organization.id}/documents`, {
+  return request<DocumentDetail>(`/organizations/${auth.organization.id}/documents`, {
     method: 'POST',
     token: auth.token,
     body,
   });
+}
+
+export function getDocument(auth: Auth, documentId: string) {
+  return request<DocumentDetail>(
+    `/organizations/${auth.organization.id}/documents/${documentId}`,
+    {
+      token: auth.token,
+    },
+  );
+}
+
+export function reprocessDocument(auth: Auth, documentId: string) {
+  return request<DocumentDetail>(
+    `/organizations/${auth.organization.id}/documents/${documentId}/reprocess`,
+    {
+      method: 'POST',
+      token: auth.token,
+    },
+  );
+}
+
+export function deleteDocument(auth: Auth, documentId: string) {
+  return request<{ ok: true }>(
+    `/organizations/${auth.organization.id}/documents/${documentId}`,
+    {
+      method: 'DELETE',
+      token: auth.token,
+    },
+  );
 }
 
 export function askQuestion(auth: Auth, question: string, conversationId?: string) {
