@@ -13,11 +13,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
-import mammoth from 'mammoth';
-import pdf from 'pdf-parse';
 import { AuthGuard } from './auth.guard';
 import { DatabaseService } from './database.service';
-import { OpenAIService } from './openai.service';
+import { DocumentJobsService } from './document-jobs';
 import { StorageService } from './storage.service';
 
 type AuthedRequest = Request & { user: { sub: string } };
@@ -35,7 +33,7 @@ export class DocumentsService {
   constructor(
     private db: DatabaseService,
     private storage: StorageService,
-    private ai: OpenAIService,
+    private jobs: DocumentJobsService,
   ) {}
 
   async list(organizationId: string, userId: string) {
@@ -101,18 +99,17 @@ export class DocumentsService {
       [organizationId, file.originalname, key, file.mimetype],
     );
 
-    await this.processDocument(document.rows[0].id, file.buffer, file.mimetype);
+    this.jobs.enqueue(document.rows[0].id);
 
     return this.detail(organizationId, userId, document.rows[0].id);
   }
 
   async reprocess(organizationId: string, userId: string, documentId: string) {
     await this.requireDocumentManager(organizationId, userId);
-    const document = await this.requireDocument(organizationId, documentId);
-    const buffer = await this.storage.get(document.storage_key);
+    await this.requireDocument(organizationId, documentId);
 
     await this.db.query("UPDATE documents SET status='processing' WHERE id=$1", [documentId]);
-    await this.processDocument(documentId, buffer, document.mime_type);
+    this.jobs.enqueue(documentId);
 
     return this.detail(organizationId, userId, documentId);
   }
@@ -129,46 +126,6 @@ export class DocumentsService {
     await this.storage.remove(document.storage_key);
 
     return { ok: true };
-  }
-
-  private async processDocument(documentId: string, buffer: Buffer, mimeType: string) {
-    try {
-      const text = await extract(buffer, mimeType);
-      const chunks = chunk(text);
-
-      if (chunks.length === 0) {
-        throw new BadRequestException('No extractable text was found in this document');
-      }
-
-      const embeddings = await this.ai.embed(chunks);
-      const client = await this.db.connect();
-
-      try {
-        await client.query('BEGIN');
-        await client.query('DELETE FROM document_chunks WHERE document_id=$1', [documentId]);
-
-        for (let index = 0; index < chunks.length; index += 1) {
-          await client.query(
-            `
-              INSERT INTO document_chunks(document_id, content, chunk_index, embedding)
-              VALUES($1, $2, $3, $4::vector)
-            `,
-            [documentId, chunks[index], index, `[${embeddings[index].join(',')}]`],
-          );
-        }
-
-        await client.query("UPDATE documents SET status='ready' WHERE id=$1", [documentId]);
-        await client.query('COMMIT');
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
-    } catch (error) {
-      await this.db.query("UPDATE documents SET status='failed' WHERE id=$1", [documentId]);
-      throw error;
-    }
   }
 
   private async member(organizationId: string, userId: string) {
@@ -281,29 +238,4 @@ export class DocumentsController {
   ) {
     return this.documents.remove(organizationId, req.user.sub, documentId);
   }
-}
-
-async function extract(buffer: Buffer, mimeType: string) {
-  if (mimeType === 'application/pdf') {
-    return (await pdf(buffer)).text;
-  }
-
-  if (mimeType.includes('wordprocessingml')) {
-    return (await mammoth.extractRawText({ buffer })).value;
-  }
-
-  return buffer.toString('utf8');
-}
-
-function chunk(text: string) {
-  const size = 1400;
-  const overlap = 200;
-  const clean = text.replace(/\s+/g, ' ').trim();
-  const chunks: string[] = [];
-
-  for (let start = 0; start < clean.length; start += size - overlap) {
-    chunks.push(clean.slice(start, start + size));
-  }
-
-  return chunks.filter(Boolean);
 }

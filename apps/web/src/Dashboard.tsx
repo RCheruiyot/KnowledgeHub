@@ -91,7 +91,7 @@ export function Dashboard({ auth, onSignOut }: Props) {
 
     try {
       const document = await uploadDocument(auth, file);
-      setNotice(`${document.filename} is ready to ask about.`);
+      setNotice(`${document.filename} was uploaded and is processing.`);
       setSelectedDocument(document);
       setFile(null);
       await refreshWorkspace();
@@ -167,7 +167,7 @@ export function Dashboard({ auth, onSignOut }: Props) {
     try {
       const document = await reprocessDocument(auth, documentId);
       setSelectedDocument(document);
-      setNotice(`${document.filename} was reprocessed.`);
+      setNotice(`${document.filename} was queued for reprocessing.`);
       await refreshWorkspace();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Could not reprocess document');
@@ -266,9 +266,21 @@ export function Dashboard({ auth, onSignOut }: Props) {
           </Card>
 
           <Card size="2">
-            <Heading as="h2" size="3">
-              Documents
-            </Heading>
+            <Flex align="center" justify="between" gap="3">
+              <Heading as="h2" size="3">
+                Documents
+              </Heading>
+              <Button
+                size="1"
+                variant="soft"
+                color="gray"
+                type="button"
+                disabled={documentBusy}
+                onClick={() => void refreshWorkspace()}
+              >
+                Refresh
+              </Button>
+            </Flex>
 
             {canUploadDocuments ? (
               <form onSubmit={handleUpload}>
@@ -309,7 +321,9 @@ export function Dashboard({ auth, onSignOut }: Props) {
                       {document.filename}
                     </Button>
                     <Badge color={statusColor(document.status)}>
-                      {document.chunk_count}
+                      {document.status === 'ready'
+                        ? `${document.chunk_count} chunks`
+                        : document.status}
                     </Badge>
                   </Flex>
                 ))
@@ -522,9 +536,9 @@ function statusColor(status: DocumentRecord['status']) {
 
 function noticeColor(notice: string) {
   if (
-    notice.includes('ready') ||
+    notice.includes('uploaded') ||
     notice.includes('deleted') ||
-    notice.includes('reprocessed')
+    notice.includes('queued')
   ) {
     return 'green';
   }
